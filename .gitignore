@@ -12,3 +12,7 @@ wheels/
 data/
 *.db
 *.log
+
+# Contexte Claude Code (local)
+CLAUDE.md
+.claude/

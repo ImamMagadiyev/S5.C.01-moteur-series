@@ -8,5 +8,4 @@ construits à partir des sous-titres de 128 séries par des méthodes de fouille
 ## Équipe
 
 - Imam Magadiyev
-- Elio Torga
 - Kenny HILAIRE
