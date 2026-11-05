@@ -12,7 +12,7 @@ document_words = Document.split() #on utilise la méthode split afin de séparer
 print("Score TF du Chien: ", term_frequency("dog",document_words))# on applique la méthode sur le mot "dog"
 print("Score TF de animal: ", term_frequency("pet",document_words))# on applique la methode sur le mot "pet" 
 
-#CaLCUL DU SCORE IDF D'UN MOT DANS UN CORPUS : càd le logarithme du nombre total de documents divisé par le nombre de documents contenant le mot
+#CaLcul DU SCORE IDF D'UN MOT DANS UN CORPUS : càd le logarithme du nombre total de documents divisé par le nombre de documents contenant le mot
 #On passe en paramètre le mot que l'on cherche et le corpus càd une liste de documents dont chaque document est une liste de mots
 def  inverse_document_frequency ( word, corpus ): 
     count_of_documents = len (corpus) + 1 #on récupere le nb de documents dans le corpus et on ajoute 1 pour éviter la division par zéro
@@ -21,37 +21,49 @@ def  inverse_document_frequency ( word, corpus ):
     return idf # on retourne le résultat du calcul du score IDF
 idf = inverse_document_frequency
 
-#il ne nous reste pluq qu'a calculer le score TF-IDF d'un mot dans un document par rapport à un corpus, càd le produit du score TF et du score IDF
+#il ne nous reste plus qu'a calculer le score TF-IDF d'un mot dans un document par rapport à un corpus, càd le produit du score TF et du score IDF
 def tf_idf(mot,document,corpus):
     tf_idf = tf(mot,document) * idf(mot,corpus)
     return tf_idf
-
 #recupere le nom du repertoire dans lequel se trouve le projet
 #quand on rappelle os.path.dirname deux fois, on remonte de deux niveaux dans l'arborescence des dossiers pour obtenir le chemin du répertoire racine du projet
 RACINE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 #on teste notre fonction sur un petit corpus de documents initialisé sous forme de liste, chaque string => 1 document
-corpus_unsplit = [ 
-     "Mon chien est très bon au jeu de la balle" , 
-    "J'avais un chien qui ne ressemblait pas vraiment à un chien, mais c'en était un" , 
-    "chien lapin chat lapin coq chien cochon chèvre cheval chien chien chat vache otarie oiseau pigeon pingouins et baleines et coffres au trésor et quels autres objets aléatoires peuvent figurer dans ce long document, je me demande" , 
-    "J'ai un chat" , 
-    "J'ai une chèvre" , 
-    "Pourquoi tout le monde parle de ses animaux de compagnie" , 
-    "J'ai un zèbre" , 
-    "Tu n'as pas de zèbre, Timmy"
- ] 
-
-corpus = [c.split() for c in corpus_unsplit] #on split chaque document en mots
-target_word = "chien"
+corpus_chemin = RACINE + "/data/corpus_propre" #on construit le chemin vers le fichier corpus.txt en utilisant le chemin du répertoire racine du projet 
+liste = os.listdir(corpus_chemin) #on utilise la méthode listdir() pour lister les fichiers dans le répertoire corpus_propre
+corpus_vf = [] #on initialise une liste vide pour stocker les documents du corpus
+corpus_vo = []
+liste_nom_fic_vf =[]
+liste_nom_fic_vo = []
+for fichier in liste:
+    if fichier.lower().endswith("vf.txt"): #on vérifie si le fichier est en vo ou vf 
+        liste_nom_fic_vf.append(fichier) #on ajoute le nom du fichier à la liste des noms de series vf
+        with open(corpus_chemin + "/" + fichier, "r", encoding="utf-8") as f: #on ouvre chaque fichier en mode lecture avec l'encodage utf-8
+            corpus_vf.append(f.read().split()) ##on lit le contenu du fichier avant de le splitter en mots et de l'ajouter à la liste corpus_vf
+    elif fichier.lower().endswith("vo.txt"): #on vérifie si le fichier est en vo ou vf 
+        liste_nom_fic_vo.append(fichier) #on ajoute le nom du fichier à la liste des noms de series vo
+        with open(corpus_chemin + "/" + fichier, "r", encoding="utf-8") as f: #on ouvre chaque fichier en mode lecture avec l'encodage utf-8
+            corpus_vo.append(f.read().split()) #on lit le contenu du fichier avant de le splitter en mots et de l'ajouter à la liste corpus_vo
+target_word = "ile"
 print("----------------------------------------------------------------------------------------------")
 print("--------------------------------------TEST VERSION 1 TF-IDF------------------------------------")
 print("----------------------------------------------------------------------------------------------")
-print("VERSION DE TEST SUR UN PETIT CORPUS -- UN PETIT TEXTE DE TEST")
+print("VERSION DE TEST 1- INDEXATION VRAI DATASET")
 print ( "recherche du mot '%s'" %target_word) 
-for i, document in enumerate(corpus):  #on utilise un enumerate pour faciliter l'affichage de l'index du doc + son contenu
-    tf_score = tf(target_word, document)
-    idf_score = idf(target_word, corpus)
-    tf_idf_score = tf_idf(target_word, document, corpus)
-    print ( "document %s: '%s'\n score tf: %s\n score idf: %s\n score tf_idf:%s" %(i, document, tf_score, idf_score, tf_idf_score)) 
+for i, serie in enumerate(liste_nom_fic_vf):  #on utilise un enumerate pour faciliter l'affichage de l'index du doc + son contenu
+    tf_score = tf(target_word, corpus_vf[i]) #on calcule le score TF du mot cible dans le document courant
+    idf_score = idf(target_word, corpus_vf)
+    tf_idf_score = tf_idf(target_word, corpus_vf[i], corpus_vf)
+    print ( "document %s: '%s'\n score tf: %s\n score idf: %s\n score tf_idf:%s" %(i, serie, tf_score, idf_score, tf_idf_score)) 
+    print ( "-" * 30 )
+
+print("----------------------------------------------------------------------------------------------" \
+"--------------------------------------TEST VERSION 2 TF-IDF vo ------------------------------------" \
+"")
+for i, serie in enumerate(liste_nom_fic_vo):  #on utilise un enumerate pour faciliter l'affichage de l'index du doc + son contenu
+    tf_score = tf(target_word, corpus_vo[i]) #on calcule le score TF du mot cible dans le document courant
+    idf_score = idf(target_word, corpus_vo)
+    tf_idf_score = tf_idf(target_word, corpus_vo[i], corpus_vo)
+    print ( "document %s: '%s'\n score tf: %s\n score idf: %s\n score tf_idf:%s" %(i, serie, tf_score, idf_score, tf_idf_score)) 
     print ( "-" * 30 )
