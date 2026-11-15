@@ -7,11 +7,6 @@ def term_frequency(word,document):
     return document.count(word) / len(document) 
 tf = term_frequency 
 
-Document = "my dog is the best dog that ever was a pet dog"
-document_words = Document.split() #on utilise la méthode split afin de séparer le texte en mots et de créer une liste de mots
-print("Score TF du Chien: ", term_frequency("dog",document_words))# on applique la méthode sur le mot "dog"
-print("Score TF de animal: ", term_frequency("pet",document_words))# on applique la methode sur le mot "pet" 
-
 #CaLcul DU SCORE IDF D'UN MOT DANS UN CORPUS : càd le logarithme du nombre total de documents divisé par le nombre de documents contenant le mot
 #On passe en paramètre le mot que l'on cherche et le corpus càd une liste de documents dont chaque document est une liste de mots
 def  inverse_document_frequency ( word, corpus ): 
@@ -29,41 +24,44 @@ def tf_idf(mot,document,corpus):
 #quand on rappelle os.path.dirname deux fois, on remonte de deux niveaux dans l'arborescence des dossiers pour obtenir le chemin du répertoire racine du projet
 RACINE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+
 #on teste notre fonction sur un petit corpus de documents initialisé sous forme de liste, chaque string => 1 document
 corpus_chemin = RACINE + "/data/corpus_propre" #on construit le chemin vers le fichier corpus.txt en utilisant le chemin du répertoire racine du projet 
 liste = os.listdir(corpus_chemin) #on utilise la méthode listdir() pour lister les fichiers dans le répertoire corpus_propre
-corpus_vf = [] #on initialise une liste vide pour stocker les documents du corpus
-corpus_vo = []
-liste_nom_fic_vf =[]
-liste_nom_fic_vo = []
+corpus_vf = {} #on initialise un dictionnaire vide pour stocker les documents du corpus
+corpus_vo = {}
 for fichier in liste:
     if fichier.lower().endswith("vf.txt"): #on vérifie si le fichier est en vo ou vf 
-        liste_nom_fic_vf.append(fichier) #on ajoute le nom du fichier à la liste des noms de series vf
+        nom = fichier.split(".")[0] #on récupère le nom du fichier sans l'extension
         with open(corpus_chemin + "/" + fichier, "r", encoding="utf-8") as f: #on ouvre chaque fichier en mode lecture avec l'encodage utf-8
-            corpus_vf.append(f.read().split()) ##on lit le contenu du fichier avant de le splitter en mots et de l'ajouter à la liste corpus_vf
+            corpus_vf[nom] = f.read().split() ##on lit le contenu du fichier avant de le splitter en mots et de l'ajouter comme valeur dans le dictionnaire corpus_vf
     elif fichier.lower().endswith("vo.txt"): #on vérifie si le fichier est en vo ou vf 
-        liste_nom_fic_vo.append(fichier) #on ajoute le nom du fichier à la liste des noms de series vo
+        name = fichier.split(".")[0] #on récupère le nom du fichier sans l'extension
         with open(corpus_chemin + "/" + fichier, "r", encoding="utf-8") as f: #on ouvre chaque fichier en mode lecture avec l'encodage utf-8
-            corpus_vo.append(f.read().split()) #on lit le contenu du fichier avant de le splitter en mots et de l'ajouter à la liste corpus_vo
-target_word = "ile"
+            corpus_vo[name] = f.read().split() #on lit le contenu du fichier avant de le splitter en mots et de l'ajouter comme valeur dans le dictionnaire corpus_vo
+options = {"1": "français", "2": "anglais"}
+choix = input("1 = français, 2 = anglais : ")
+langue = options.get(choix)
+target_word = input("Quel mot voulez-vous rechercher dans le corpus ? ") 
 print("----------------------------------------------------------------------------------------------")
 print("--------------------------------------TEST VERSION 1 TF-IDF------------------------------------")
 print("----------------------------------------------------------------------------------------------")
 print("VERSION DE TEST 1- INDEXATION VRAI DATASET")
-print ( "recherche du mot '%s'" %target_word) 
-for i, serie in enumerate(liste_nom_fic_vf):  #on utilise un enumerate pour faciliter l'affichage de l'index du doc + son contenu
-    tf_score = tf(target_word, corpus_vf[i]) #on calcule le score TF du mot cible dans le document courant
-    idf_score = idf(target_word, corpus_vf)
-    tf_idf_score = tf_idf(target_word, corpus_vf[i], corpus_vf)
-    print ( "document %s: '%s'\n score tf: %s\n score idf: %s\n score tf_idf:%s" %(i, serie, tf_score, idf_score, tf_idf_score)) 
-    print ( "-" * 30 )
 
-print("----------------------------------------------------------------------------------------------" \
-"--------------------------------------TEST VERSION 2 TF-IDF vo ------------------------------------" \
-"")
-for i, serie in enumerate(liste_nom_fic_vo):  #on utilise un enumerate pour faciliter l'affichage de l'index du doc + son contenu
-    tf_score = tf(target_word, corpus_vo[i]) #on calcule le score TF du mot cible dans le document courant
-    idf_score = idf(target_word, corpus_vo)
-    tf_idf_score = tf_idf(target_word, corpus_vo[i], corpus_vo)
-    print ( "document %s: '%s'\n score tf: %s\n score idf: %s\n score tf_idf:%s" %(i, serie, tf_score, idf_score, tf_idf_score)) 
-    print ( "-" * 30 )
+
+print ( "recherche du mot '%s' en %s" %(target_word, langue)) 
+
+if langue == "français":
+    for i, (cle, valeur) in enumerate(corpus_vf.items()):
+        tf_score = tf(target_word, valeur) #on calcule le score TF du mot cible dans le document courant
+        idf_score = idf(target_word, corpus_vf)
+        tf_idf_score = tf_idf(target_word, valeur, corpus_vf)
+        print ( "document %s: '%s'\n score tf: %s\n score idf: %s\n score tf_idf:%s" %(i, cle, tf_score, idf_score, tf_idf_score)) 
+        print ( "-" * 30 )
+elif langue == "anglais":
+    for i, (cle, valeur) in enumerate(corpus_vo.items()):
+        tf_score = tf(target_word, valeur) #on calcule le score TF du mot cible dans le document courant
+        idf_score = idf(target_word, corpus_vo)
+        tf_idf_score = tf_idf(target_word, valeur, corpus_vo)
+        print ( "document %s: '%s'\n score tf: %s\n score idf: %s\n score tf_idf:%s" %(i, cle, tf_score, idf_score, tf_idf_score)) 
+        print ( "-" * 30 )
