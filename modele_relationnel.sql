@@ -74,9 +74,10 @@ date_creation DATE NOT NULL DEFAULT (CURRENT_DATE)
 CREATE TABLE apparait(
 fk_MOT INTEGER NOT NULL,
 fk_serie INTEGER NOT NULL,
+langue TEXT NOT NULL CHECK (langue IN ('vf', 'vo')),
 poids FLOAT NOT NULL,
 frequence INT NOT NULL,
-PRIMARY KEY (fk_MOT, fk_serie),
+PRIMARY KEY (fk_MOT, fk_serie, langue),
 FOREIGN KEY (fk_MOT) REFERENCES mot(Id_MOT) ON DELETE CASCADE,
 FOREIGN KEY (fk_serie) REFERENCES serie(ID_Serie) ON DELETE CASCADE
 ) WITHOUT ROWID;
