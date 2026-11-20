@@ -1,12 +1,28 @@
 import sqlite3
-from config import CHEMIN_BASE
+
+from moteur_series.config import BASE
 
 def connexion():
-    conn = sqlite3.connect(CHEMIN_BASE)
+    conn = sqlite3.connect(BASE)
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
-def inserer_serie(conn, titre):
+def vider_index(conn):
+    """
+    Efface l'ancien index pour pouvoir relancer le script 
+    on ne touche pas a la table Serie supprimer une serie effacerait 
+    aussi ses notes (ON DELETE CASCADE dans noter)
+    """
+    conn.execute("DELETE FROM apparait")
+    conn.execute("DELETE FROM Mot")
+
+def obtenir_ou_creer_serie(conn, titre):
+    """
+    Renvoie l'identifiant de la serie en la créant si elle n'existe pas encore
+    """
+    ligne = conn.execute("SELECT ID_Serie FROM Serie WHERE Titre = ?", (titre,)).fetchone()
+    if ligne:
+        return ligne[0]
     curseur = conn.execute("INSERT INTO Serie (Titre) VALUES (?)", (titre,))
     return curseur.lastrowid
 
