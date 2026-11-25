@@ -23,7 +23,7 @@ print("Tapez une recherche (ligne vide pour quitter).")
 
 while True:
     try:
-        requete = input("\nRecherche :")
+        requete = input("\nRecherche : ")
     except (KeyboardInterrupt, EOFError):
         # Ctrl+C ou Ctrl+Z on quitte proprement sans trace d'erreur
         print()
