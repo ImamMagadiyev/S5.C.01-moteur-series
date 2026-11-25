@@ -42,7 +42,8 @@ def rechercher(requete, index, nb_resultats=10):
     """
     Renvoie les séries les plus pertinentes pour la requête sous la forme
     [(titre, score), ...] de la meilleure à la moins bonne
-    Score d'une série = somme des poids des mots de la requête qu'elle contient
+    Score d'une série = somme, pour chaque mot de la requête, de son poids
+    dans la série divisé par le plus gros poids de ce mot (entre 0 et 1)    
     """
     # Même nettoyage que le corpus (accents, stop-words...), sinon rien ne correspond
     mots = nettoyer_texte(requete)
@@ -51,10 +52,14 @@ def rechercher(requete, index, nb_resultats=10):
     for mot in mots:
         if mot not in index:
             continue   # mot absent du corpus : il n'apporte rien
-        for titre, poids in index[mot].items():
+        series_du_mot = index[mot]
+        # On divise par le plus gros poids de ce mot : chaque mot de la requête
+        # apporte au plus 1 point, un mot fréquent ne peut plus écraser les autres
+        poids_max = max(series_du_mot.values())   # renvoie le plus gros poids
+        for titre, poids in series_du_mot.items():
             if titre not in scores:
                 scores[titre] = 0
-            scores[titre] = scores[titre] + poids
-
+            scores[titre] = scores[titre] + poids / poids_max
+            
     classement = sorted(scores.items(), key=lambda paire: paire[1], reverse=True)
     return classement[:nb_resultats]
