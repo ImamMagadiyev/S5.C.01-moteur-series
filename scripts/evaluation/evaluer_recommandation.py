@@ -5,7 +5,7 @@ import os
 import time
 
 from moteur_series.config import BASE
-from moteur_series.recommandation import charger_vecteurs, series_similaires
+from moteur_series.recommandation import calculer_similarites, charger_vecteurs, series_similaires
 
 # series attendue dans ses recommandations
 PAIRES_TEST = [
@@ -39,8 +39,11 @@ if not os.path.exists(BASE):
     print("Lancer d'abord : uv run scripts/preparation/create_base.py puis uv run scripts/preparation/indexation/main.py")
     raise SystemExit(1)
 
-print("Chargement des vecteurs...")
+print("Chargement des vecteurs et calcul des similarites...")
+debut = time.time()
 vecteurs = charger_vecteurs()
+similarites = calculer_similarites(vecteurs)
+print(len(similarites), "series pretes en", round(time.time() - debut, 1), "s")
 print()
 
 # ---------------------------------------------------------
@@ -50,7 +53,7 @@ nb_top1 = 0
 nb_top5 = 0
 
 for serie, attendue in PAIRES_TEST:
-    resultats = series_similaires(serie, vecteurs, NB_RESULTATS)
+    resultats = series_similaires(serie, similarites, NB_RESULTATS)
 
     # Rang de la serie attendue, 0 si elle n'apparait pas
     rang = 0
@@ -90,16 +93,16 @@ print()
 print("Calcul des recommandations de toutes les series...")
 debut = time.time()
 apparitions = {}
-for titre in vecteurs:
-    for titre_proche, similarite in series_similaires(titre, vecteurs, 5):
+for titre in similarites:
+    for titre_proche, similarite in series_similaires(titre, similarites, 5):
         if titre_proche not in apparitions:
             apparitions[titre_proche] = 0
         apparitions[titre_proche] = apparitions[titre_proche] + 1
 duree = time.time() - debut
 
 classement = sorted(apparitions.items(), key=lambda paire: paire[1], reverse=True)
-print(f"Series les plus proposees (nombre de top 5 sur {len(vecteurs)} series) :")
+print(f"Series les plus proposees (nombre de top 5 sur {len(similarites)} series) :")
 for titre, nb_fois in classement[:5]:
     print(f"   {titre:22} {nb_fois}")
 print(len(apparitions), "series differentes proposees au moins une fois")
-print(f"Temps moyen par serie : {1000 * duree / len(vecteurs):.0f} ms")
+print(f"Temps moyen par serie : {1000 * duree / len(similarites):.1f} ms")

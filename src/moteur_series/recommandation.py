@@ -14,6 +14,9 @@ NB_SERIES_MIN = 3
 # On ne garde que les NB_MOTS_MAX mots les plus forts de chaque serie
 NB_MOTS_MAX = 1000
 
+# Penalite des series "aimants" : nombre de voisines prises pour la moyenne
+NB_VOISINS = 10
+
 def charger_vecteurs(langue="vf"):
     """
     Renvoie {titre: {id_mot: poids}}, chaque vecteur ayant une longueur de 1
@@ -82,27 +85,109 @@ def charger_vecteurs(langue="vf"):
     return vecteurs
 
 
-def series_similaires(titre, vecteurs, nb_resultats=10):
+def calculer_similarites(vecteurs):
     """
-    Renvoie les series les plus proches de titre sous la forme 
-    [(titre, similarite), ...] de la plus proche a la moins proche 
-    similarite cosinus 0 = aucun mot en commun 1 = vecteurs identiques
+    Calcule une seule fois, au demarrage, la similarite de TOUTES les paires
+    de series (environ 0,5 s). Renvoie {titre: {autre_titre: score}}
+
+    score(A, B) = 2 x cosinus(A, B) - moyenne_voisins(A) - moyenne_voisins(B)
+    moyenne_voisins(A) = cosinus moyen de A avec ses NB_VOISINS series les plus proches
+    Une serie proche de tout le monde (une serie "aimant") a une moyenne elevee :
+    elle recule dans les recommandations des autres. Le score peut etre negatif,
+    seul l'ordre compte
     """
-    if titre not in vecteurs:
+    titres = list(vecteurs)
+
+    # 1. Cosinus de chaque paire. Les vecteurs ont une longueur de 1 : le cosinus
+    # est la somme des produits des poids des mots communs. Il est symetrique,
+    # on le calcule une seule fois pour A-B et B-A
+    cosinus = {}
+    for titre in titres:
+        cosinus[titre] = {}
+    for i in range(len(titres)):
+        titre_a = titres[i]
+        vecteur_a = vecteurs[titre_a]
+        for j in range(i + 1, len(titres)):
+            titre_b = titres[j]
+            vecteur_b = vecteurs[titre_b]
+            produit = 0
+            for id_mot, poids in vecteur_a.items():
+                if id_mot in vecteur_b:
+                    produit = produit + poids * vecteur_b[id_mot]
+            cosinus[titre_a][titre_b] = produit
+            cosinus[titre_b][titre_a] = produit
+
+    # 2. Pour chaque serie, cosinus moyen avec ses NB_VOISINS plus proches
+    moyenne_voisins = {}
+    for titre in titres:
+        meilleurs = sorted(cosinus[titre].values(), reverse=True)[:NB_VOISINS]
+        moyenne_voisins[titre] = sum(meilleurs) / len(meilleurs)
+
+    # 3. Score final avec la penalite des aimants
+    similarites = {}
+    for titre_a in titres:
+        similarites[titre_a] = {}
+        for titre_b, valeur in cosinus[titre_a].items():
+            similarites[titre_a][titre_b] = (
+                2 * valeur - moyenne_voisins[titre_a] - moyenne_voisins[titre_b]
+            )
+    return similarites
+
+
+def series_similaires(titre, similarites, nb_resultats=10):
+    """
+    Renvoie les series les plus proches de titre sous la forme
+    [(titre, score), ...] de la plus proche a la moins proche
+    similarites vient de calculer_similarites() : ici on ne fait que trier
+    """
+    if titre not in similarites:
         return []   # serie inconnue
-    vecteur = vecteurs[titre]
+    classement = sorted(similarites[titre].items(), key=lambda paire: paire[1], reverse=True)
+    return classement[:nb_resultats]
 
-    scores = []
-    for autre_titre, autre_vecteur in vecteurs.items():
-        if autre_titre == titre:
-            continue    # on ne recommande pas la serie elle-meme
-        # les vecteurs ont une longueur de 1
-        # le cosinus est la somme des produits des poids des mots communs
-        produit = 0
-        for id_mot, poids in vecteur.items():
-            if id_mot in autre_vecteur:
-                produit = produit + poids * autre_vecteur[id_mot]
-        scores.append((autre_titre, produit))
 
-    scores.sort(key=lambda paire: paire[1], reverse=True)
-    return scores[:nb_resultats]
+def charger_notes(id_utilisateur):
+    """
+    Renvoie les notes d'un utilisateur sous la forme {titre: note de 1 a 5}
+    (table Noter). Dictionnaire vide si l'utilisateur n'a rien note
+    """
+    connexion = sqlite3.connect(BASE)
+    lignes = connexion.execute(
+        "SELECT Serie.Titre, Noter.note FROM Noter"
+        " JOIN Serie ON Serie.ID_Serie = Noter.fk_serie"
+        " WHERE Noter.fk_utilisateur = ?",
+        (id_utilisateur,),
+    )
+    notes = {}
+    for titre, note in lignes:
+        notes[titre] = note
+    connexion.close()
+    return notes
+
+
+def recommander_selon_notes(notes, similarites, nb_resultats=10):
+    """
+    notes : {titre: note de 1 a 5} donnees par un utilisateur
+    Renvoie [(titre, score), ...] parmi les series qu'il n'a PAS encore notees
+
+    score(S) = somme, pour chaque serie notee R, de (note(R) - 3) x similarite(S, R)
+    Une note de 5 attire (+2), 4 attire un peu (+1), 3 est neutre (0),
+    2 repousse un peu (-1), 1 repousse (-2) : les series proches d'une serie
+    detestee descendent dans le classement
+    """
+    scores = {}
+    for titre_note, note in notes.items():
+        if titre_note not in similarites:
+            continue   # serie inconnue : ignoree
+        poids = note - 3
+        if poids == 0:
+            continue   # note neutre : elle n'apporte rien
+        for titre, similarite in similarites[titre_note].items():
+            if titre in notes:
+                continue   # deja notee : on ne la recommande pas
+            if titre not in scores:
+                scores[titre] = 0
+            scores[titre] = scores[titre] + poids * similarite
+
+    classement = sorted(scores.items(), key=lambda paire: paire[1], reverse=True)
+    return classement[:nb_resultats]
