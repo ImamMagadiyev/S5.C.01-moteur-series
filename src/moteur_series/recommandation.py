@@ -11,10 +11,14 @@ from moteur_series.config import BASE
 # Un mot present dans moins de series est ignore
 NB_SERIES_MIN = 3
 
+# On ne garde que les NB_MOTS_MAX mots les plus forts de chaque serie
+NB_MOTS_MAX = 1000
+
 def charger_vecteurs(langue="vf"):
     """
     Renvoie {titre: {id_mot: poids}}, chaque vecteur ayant une longueur de 1
     poids = (1 + log(frequence)) * log(nb_series / nb_series_du_mot)
+    seuls les NB_MOTS_MAX mots les plus forts de chaque serie sont gardes
     a appeler une seule fois au demarrage
     """
     connexion = sqlite3.connect(BASE)
@@ -56,6 +60,14 @@ def charger_vecteurs(langue="vf"):
                 vecteurs[titre] = {}
             # 1 + log un mot dit 1000 fois ne compte pas 1000 fois plus 
             vecteurs[titre][id_mot] = (1 + math.log(frequence)) * idf
+
+    # 3b. Toutes les series a egalite : on garde seulement leurs NB_MOTS_MAX
+    # mots les plus forts. Sans ca, une longue serie (ncis : 25 000 mots contre
+    # 2 000 pour whitechapel) partage des mots avec tout le monde et ressort
+    # dans presque toutes les recommandations
+    for titre in vecteurs:
+        mots_tries = sorted(vecteurs[titre].items(), key=lambda paire: paire[1], reverse=True)
+        vecteurs[titre] = dict(mots_tries[:NB_MOTS_MAX])
 
     # 4. On divise chaque vecteur par sa longueur (norme) une fois pour toutes
     # le cosinus entre deux series se reduit alors a une somme de produits
