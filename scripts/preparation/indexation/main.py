@@ -1,3 +1,8 @@
+# SAE S5.C.01
+# Indexation : remplit les tables Mot, Serie et apparait (TF-IDF) a partir de data/corpus_propre
+# Relancable : l'index est vide au debut
+# Usage : uv run scripts/preparation/indexation/main.py
+
 from moteur_series.config import CORPUS_PROPRE
 from corpus import charger_corpus
 from tfidf import calculer_document_frequencies, top_mots_serie

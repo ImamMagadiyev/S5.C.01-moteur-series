@@ -1,8 +1,11 @@
+# SAE S5.C.01
+# Extrait les archives .zip du corpus dans data/sous-titres
+# Usage : uv run scripts/preparation/extraction.py
+
 import os
 import zipfile
 
-RACINE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CORPUS = os.path.join(RACINE, "data", "sous-titres")
+from moteur_series.config import CORPUS
 
 print("Corpus :", CORPUS)
 

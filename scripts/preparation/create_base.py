@@ -1,24 +1,22 @@
 # SAE S5.C.01
-# Cree la base de donnees a partir de data/modele_relationnel.sql
-# USage : uv run scripts/creation_base.py
+# Cree la base de donnees a partir de modele_relationnel.sql
+# ATTENTION : supprime puis recree toutes les tables (index ET comptes)
+# Usage : uv run scripts/preparation/create_base.py
 
-import os 
+import os
 import sqlite3
 
-# Chemins relatifs au projet Jamais de C:\Users\.. en dur
-RACINE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DOSSIER_DATA = os.path.join(RACINE, "data")
-BASe = os.path.join(DOSSIER_DATA, "series.db")
-SCRIPT_SQL = os.path.join(RACINE, "modele_relationnel.sql")
+# Tous les chemins viennent de config.py : jamais de C:\Users\... en dur
+from moteur_series.config import BASE, DOSSIER_DATA, SCRIPT_SQL
 
 print("Script SQL :", SCRIPT_SQL)
-print("Base     :", BASe)
+print("Base     :", BASE)
 print()
 
 # On verifie que le fichier SQL est bien avant de continuer
 if not os.path.exists(SCRIPT_SQL):
     print("ERREUR : fichier SQL introuvable")
-    print("Il doit se trouver dans data/ ")
+    print("Il doit se trouver a la racine du projet")
     raise SystemExit(1)
 
 # Le dossier data n est pas versionne. Il peut ne pas exister
@@ -32,7 +30,7 @@ sql = fichier.read()
 fichier.close()
 
 # On execute tout le script d'un coup
-connexion = sqlite3.connect(BASe)
+connexion = sqlite3.connect(BASE)
 connexion.execute("PRAGMA foreign_keys = ON")
 connexion.executescript(sql)
 connexion.commit()

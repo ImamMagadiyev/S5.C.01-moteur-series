@@ -1,7 +1,7 @@
 # SAE S5.C.01
 # Nettoie les sous-titres du corpus et ecrit un fichier texte
 # par serie et par langue dans data/corpus_propre
-# Usage : uv run scripts/nettoyage.py
+# Usage : uv run scripts/preparation/nettoyage.py
 
 import os
 

@@ -1,6 +1,6 @@
 # SAE S5.C.01
 # Nettoyage du texte transforme un texte brut en liste de mots utiles
-# Utilise pour le corpus (scripts/nettoyage.py) et pour les requetes
+# Utilise pour le corpus (scripts/preparation/nettoyage.py) et pour les requetes
 # de recherche les deux doivent subir exactement le meme traitement 
 
 import re 

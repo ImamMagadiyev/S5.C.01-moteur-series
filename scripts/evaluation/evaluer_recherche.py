@@ -1,8 +1,8 @@
 # SAE S5.C.01
 # Evaluation du moteur de recherche sur des requetes test
 # pour chaque requete on connait la serie attendue on regarde a quel rang elle sort
-# Prerequis base remplie (uv run scripts/indexation/main.py)
-# Usage uv run scripts/evaluer_recherche.py
+# Prerequis base remplie (uv run scripts/preparation/indexation/main.py)
+# Usage uv run scripts/evaluation/evaluer_recherche.py
 
 import os
 import time
@@ -39,7 +39,7 @@ NB_RESULTATS = 200
 
 if not os.path.exists(BASE):
     print("Erreur : base introuvable :", BASE)
-    print("Lance d'abord : uv run scripts/create_base.py puis uv run scripts/indexation/main.py")
+    print("Lance d'abord : uv run scripts/preparation/create_base.py puis uv run scripts/preparation/indexation/main.py")
     raise SystemExit(1)
 
 print("Chargement de l'index...")
