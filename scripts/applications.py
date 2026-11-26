@@ -12,6 +12,8 @@ import sys
 
 from moteur_series.config import RACINE
 
+SCRIPT_RECHERCHE = os.path.join(RACINE, "scripts", "recherche.py")
+
 def ecran_accueil():
     print("\n=== ACCUEIL ===")
     print("1. Se connecter")
@@ -34,7 +36,7 @@ def ecran_accueil():
 def ecran_connexion(conn):
     print("\n=== CONNEXION ===")
     pseudo = input("Votre pseudio :").strip()
-    mdp = getpass.getpass("Mot de passe : ")
+    mdp = getpass("Mot de passe : ")
 
     resultat,id_utilisateur = se_connecter(conn,pseudo,mdp)
     if resultat == "mauvais_mdp":
@@ -74,7 +76,14 @@ def ecran_creer_compte(conn):
 
     print("Ce pseudo ou cet email est deja utilise.")
     return "inscription"
-        
+
+def lancer_recherche():
+         """ 
+         Lance scripts/recherche.py et attend qu'il se termine
+    sys.executable = le Python de uv, comme "uv run scripts/recherche.py"
+       """
+         subprocess.run([sys.executable, SCRIPT_RECHERCHE])
+
 def main():
     conn = connexion()
     print("Chargement de l'index...")
