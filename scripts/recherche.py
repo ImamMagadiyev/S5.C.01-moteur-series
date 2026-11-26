@@ -1,6 +1,6 @@
 # SAE S5.C.01
 # Recherche de series par mots-cles en ligne de commande
-# Prerequis base remplie (uv run scripts/indexation/main.py)
+# Prerequis base remplie (uv run scripts/preparation/indexation/main.py)
 # Usage uv run scripts/recherche.py
 
 import os
@@ -11,7 +11,7 @@ from moteur_series.recherche import charger_index, rechercher
 
 if not os.path.exists(BASE):
     print("ERREUR : base introuvable :", BASE)
-    print("Lancer d'abord : uv run scripts/create_base.py puis uv run scripts/indexation/main.py")
+    print("Lancer d'abord : uv run scripts/preparation/create_base.py puis uv run scripts/preparation/indexation/main.py")
     raise SystemExit(1)
 
 # Chargement de l'index : une seule fois, au démarrage

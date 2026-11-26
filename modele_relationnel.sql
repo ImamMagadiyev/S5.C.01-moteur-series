@@ -2,7 +2,7 @@
 -- SAE S5.C.01
 -- Creation de la base de donnees
 -- SQLite. Le fichier produit est data/series.db
--- Lancer avec sqlite3 data/series.db < scripts/creation_base.sql
+-- Lancer avec : uv run scripts/preparation/create_base.py
  
 -- SQLite desactive les cles etrangeres par defaut.
 -- Chaque connexion Python doit executer PRAGMA foreign_keys = ON.
