@@ -88,11 +88,18 @@ def nettoyer_texte(texte):
     # Enlever les mots composes AVANT de couper sur l'apostrophe
     # sinon "quelqu'un" donnerait les faut mots "quelqu" et "un"
     for mot_compose in ["aujourd'hui", "quelqu'un", "quelqu'une",
-                        "d'accord", "jusqu'a", "lorsqu'"]:
+                        "d'accord", "jusqu'a", "lorsqu'", "puisqu'", "quoiqu'"]:
         texte = texte.replace(mot_compose, " ")
 
     # Couper les elisions : l'attentat -> attentat
     texte = re.sub(r"\b[ldjnmtscqu]{1,2}'", " ", texte)
+
+    # Apostrophes restantes, a l'interieur d'un mot 
+    # On garde les morceaux 
+    mot_colles = []
+    for mot in re.findall(r"[a-z0-9]+(?:'[a-z0-9]+)+", texte):
+        mot_colles.append(mot.replace("'", ""))
+    texte = texte + " " + " ".join(mot_colles)
 
     # Ne garder que les lettres et les chiffres
     texte = re.sub(r"[^a-z0-9]", " ", texte)
