@@ -2,16 +2,18 @@
 # Application en ligne de commande : comptes, recherche, notes
 # Usage : uv run scripts/applications.py
 
+import difflib
 import os
-import subprocess
-import sys
+import re
+import time
 
 from getpass import getpass
 from moteur_series.base import connexion
 from moteur_series.comptes import creer_compte, se_connecter
-from moteur_series.config import RACINE
-
-SCRIPT_RECHERCHE = os.path.join(RACINE, "scripts", "recherche.py")
+from moteur_series.config import BASE
+from moteur_series.recherche import charger_index, rechercher
+from moteur_series.recommandation import calculer_similarites, charger_vecteurs, series_similaires
+from moteur_series.texte import supprimer_accents
 
 LARGEUR = 52
 
@@ -177,29 +179,108 @@ def ecran_menu(utilisateur):
         sortie = "Se déconnecter"
     choix = choisir([
         ("1", "Rechercher une série par mots-clés"),
+        ("2", "Séries similaires à une série"),
         ("0", sortie),
     ])
     if choix == "1":
         return "recherche"
+    if choix == "2":
+        return "similaires"
     if utilisateur is not None:
         annoncer("Vous êtes déconnecté.", GRIS)
     return "accueil"
 
 
-def lancer_recherche(utilisateur):
+def charger_donnees():
     """
-    Lance scripts/recherche.py et attend qu'il se termine
-    sys.executable = le Python de uv, comme "uv run scripts/recherche.py"
+    Charge l'index de recherche et calcule les similarites entre series
+    Une seule fois, au demarrage : ensuite chaque requete est instantanee
     """
+    debut = time.time()
+    print(couleur(" Chargement de l'index de recherche...", GRIS))
+    index = charger_index()
+    print(couleur(" Calcul des similarités entre séries...", GRIS))
+    similarites = calculer_similarites(charger_vecteurs())
+    print(couleur(" Prêt en " + str(round(time.time() - debut, 1)) + " s", GRIS))
+    return index, similarites
+
+
+def afficher_resultats(resultats):
+    """
+    Affiche une liste [(titre, score), ...] numerotee
+    """
+    rang = 1
+    for titre, score in resultats:
+        numero = couleur(str(rang).rjust(2) + ".", CYAN)
+        print("   " + numero + " " + titre.ljust(30) + couleur(f"{score:.3f}", GRIS))
+        rang = rang + 1
+
+
+def demander_titre(similarites, invite):
+    """
+    Demande le nom d'une serie jusqu'a ce qu'il corresponde a une serie connue
+    Renvoie le titre tel qu'il est dans la base, ou None si la ligne est vide
+    """
+    while True:
+        saisie = input(couleur(invite, JAUNE)).strip()
+        if saisie == "":
+            return None
+        # Les titres de la base sont colles, en minuscules, sans accents :
+        # "Grey's Anatomy" -> "greysanatomy"
+        titre = re.sub(r"[^a-z0-9]", "", supprimer_accents(saisie.lower()))
+        if titre in similarites:
+            return titre
+
+        # Titre inconnu : on propose d'abord les titres qui s'ecrivent presque
+        # pareil (fautes de frappe), puis ceux qui contiennent ce qui a ete tape
+        propositions = difflib.get_close_matches(titre, list(similarites), n=3, cutoff=0.6)
+        for titre_connu in sorted(similarites):
+            if titre != "" and titre in titre_connu and titre_connu not in propositions:
+                propositions.append(titre_connu)
+        if len(propositions) > 0:
+            print(" " + couleur("Série inconnue. Vouliez-vous dire : " + ", ".join(propositions[:5]) + " ?", ROUGE))
+        else:
+            print(" " + couleur("Série inconnue.", ROUGE))
+
+
+def ecran_recherche(index, utilisateur):
     afficher_entete("RECHERCHE", utilisateur)
-    try:
-        subprocess.run([sys.executable, SCRIPT_RECHERCHE])
-    except KeyboardInterrupt:
-        # Sous Windows, Ctrl+C arrive aussi ici : on revient simplement au menu
-        pass
+    print(couleur(" Tapez des mots-clés (ligne vide pour revenir au menu).", GRIS))
+    while True:
+        print()
+        requete = input(couleur(" Recherche : ", JAUNE)).strip()
+        if requete == "":
+            return "menu"
+        debut = time.time()
+        resultats = rechercher(requete, index)
+        duree = (time.time() - debut) * 1000
+        if len(resultats) == 0:
+            print(" " + couleur("Aucune série trouvée.", ROUGE))
+        else:
+            afficher_resultats(resultats)
+            print(couleur(f" ({duree:.0f} ms)", GRIS))
+
+
+def ecran_similaires(similarites, utilisateur):
+    afficher_entete("SÉRIES SIMILAIRES", utilisateur)
+    print(couleur(" Tapez le nom d'une série (ligne vide pour revenir au menu).", GRIS))
+    while True:
+        print()
+        titre = demander_titre(similarites, " Série : ")
+        if titre is None:
+            return "menu"
+        print(" Les séries les plus proches de " + couleur(titre, GRAS) + " :")
+        afficher_resultats(series_similaires(titre, similarites))
+
 
 def main():
     os.system("")   # active les couleurs ANSI dans la console Windows
+    # sqlite3.connect creerait une base vide si le fichier n'existe pas
+    if not os.path.exists(BASE):
+        print(couleur(" ERREUR : base introuvable : " + BASE, ROUGE))
+        print(" Lancer d'abord la préparation (create_base.py puis indexation/main.py).")
+        return
+    index, similarites = charger_donnees()
     conn = connexion()
 
     ecran = "accueil"
@@ -215,8 +296,9 @@ def main():
         elif ecran == "menu":
             ecran = ecran_menu(utilisateur)
         elif ecran == "recherche":
-            lancer_recherche(utilisateur)
-            ecran = "menu"        # fin de la recherche : retour au menu
+            ecran = ecran_recherche(index, utilisateur)
+        elif ecran == "similaires":
+            ecran = ecran_similaires(similarites, utilisateur)
 
     conn.close()
     print(couleur(" Au revoir !", CYAN))
