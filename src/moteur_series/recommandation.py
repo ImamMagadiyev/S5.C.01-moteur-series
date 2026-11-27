@@ -165,6 +165,27 @@ def charger_notes(id_utilisateur):
     return notes
 
 
+def noter_serie(conn, id_utilisateur, titre, note):
+    """
+    Enregistre la note (de 1 a 5) d'un utilisateur pour une serie (table Noter)
+    Si la serie etait deja notee, l'ancienne note est remplacee
+    Renvoie True si la note est enregistree, False si la serie n'existe pas
+    """
+    ligne = conn.execute("SELECT ID_Serie FROM Serie WHERE Titre = ?", (titre,)).fetchone()
+    if ligne is None:
+        return False   # serie inconnue
+
+    id_serie = ligne[0]
+    # La cle primaire (fk_utilisateur, fk_serie) interdit deux notes pour la
+    # meme serie : INSERT OR REPLACE remplace alors l'ancienne ligne
+    conn.execute(
+        "INSERT OR REPLACE INTO Noter (fk_serie, fk_utilisateur, note) VALUES (?, ?, ?)",
+        (id_serie, id_utilisateur, note),
+    )
+    conn.commit()
+    return True
+
+
 def recommander_selon_notes(notes, similarites, nb_resultats=10):
     """
     notes : {titre: note de 1 a 5} donnees par un utilisateur
