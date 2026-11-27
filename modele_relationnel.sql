@@ -1,7 +1,7 @@
 -- =====================================================================
 -- SAE S5.C.01
 -- Creation de la base de donnees
--- SQLite. Le fichier produit est data/series.db
+-- SQLite. Le fichier produit est data/db/series.db
 -- Lancer avec : uv run scripts/preparation/create_base.py
  
 -- SQLite desactive les cles etrangeres par defaut.

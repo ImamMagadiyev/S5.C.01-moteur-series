@@ -1,4 +1,5 @@
-# Gestion des comptes utilisateurs 
+# SAE S5.C.01
+# Gestion des comptes utilisateurs : creation, connexion, mots de passe haches
 import hashlib
 import hmac
 import os
@@ -25,15 +26,15 @@ def verifier_mot_de_passe(mot_de_passe, stocke):
     """
     Renvoie True si mot_de_passe correspond a stocke ("sel$hash")
     """
-    # 1. Separer stocke en deux morceaux autour du "$"
-    # 2. Retransformer le sel en octets (indice : bytes.fromhex)
-    # 3. Recalculer l'empreinte avec CE sel, pas un nouveau
-    # 4. Comparer avec hmac.compare_digest(...)
+    # On recalcule l'empreinte avec le sel stocke (pas un nouveau) : si le mot
+    # de passe est le bon, on retombe sur la meme empreinte
     sel_hex, empreinte = stocke.split("$")
     sel = bytes.fromhex(sel_hex)
     nouvelle = hashlib.pbkdf2_hmac(
         "sha256", mot_de_passe.encode("utf-8"), sel, NB_ITERATIONS
     )
+    # compare_digest met toujours le meme temps, que les textes different au
+    # debut ou a la fin : on ne peut pas deviner le hash en chronometrant
     return hmac.compare_digest(empreinte, nouvelle.hex())
 
 
@@ -70,6 +71,3 @@ def se_connecter(conn, pseudo, mot_de_passe):
     if verifier_mot_de_passe(mot_de_passe, stocke):
         return ("ok", id_utilisateur)
     return ("mauvais_mdp", None)
-
-    ##g touché a bsae.py,comptes.py,database.py,main.py
-    

@@ -1,2 +1,3 @@
-# Fichier volontairement vide : sa presence fait de moteur_series un paquet Python,
-# ce qui permet d'ecrire par exemple : from moteur_series.texte import nettoyer_texte
+# Fichier presque vide : sa presence fait de moteur_series un paquet Python.
+# Le code est range dans les sous-paquets donnees, traitement, moteurs et interface
+# Exemple : from moteur_series.traitement.texte import nettoyer_texte

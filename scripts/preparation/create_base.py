@@ -7,7 +7,7 @@ import os
 import sqlite3
 
 # Tous les chemins viennent de config.py : jamais de C:\Users\... en dur
-from moteur_series.config import BASE, DOSSIER_DATA, SCRIPT_SQL
+from moteur_series.config import BASE, SCRIPT_SQL
 
 print("Script SQL :", SCRIPT_SQL)
 print("Base     :", BASE)
@@ -19,10 +19,11 @@ if not os.path.exists(SCRIPT_SQL):
     print("Il doit se trouver a la racine du projet")
     raise SystemExit(1)
 
-# Le dossier data n est pas versionne. Il peut ne pas exister
-if not os.path.exists(DOSSIER_DATA):
-    os.makedirs(DOSSIER_DATA)
-    print("Dossier data cree")
+# Le dossier data n est pas versionne : data/db peut ne pas exister
+# (os.path.dirname(BASE) = le dossier qui contient la base)
+if not os.path.exists(os.path.dirname(BASE)):
+    os.makedirs(os.path.dirname(BASE))
+    print("Dossier", os.path.dirname(BASE), "cree")
 
 # On lit le fichier SQL
 fichier = open(SCRIPT_SQL, encoding="utf-8")

@@ -9,7 +9,7 @@ import re
 import time
 
 from moteur_series.config import BASE
-from moteur_series.recommandation import calculer_similarites, charger_vecteurs, series_similaires
+from moteur_series.moteurs.recommandation import calculer_similarites, charger_vecteurs, series_similaires
 
 if not os.path.exists(BASE):
     print("ERREUR : base introuvable :", BASE)

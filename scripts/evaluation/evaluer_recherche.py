@@ -8,7 +8,7 @@ import os
 import time
 
 from moteur_series.config import BASE
-from moteur_series.recherche import charger_index, rechercher
+from moteur_series.moteurs.recherche import charger_index, rechercher
 
 # requete, serie attendue 
 REQUETES_TEST = [

@@ -7,7 +7,7 @@ from moteur_series.config import CORPUS_PROPRE
 from corpus import charger_corpus
 from tfidf import calculer_document_frequencies, top_mots_serie
 from database import  vider_index, obtenir_ou_creer_serie, obtenir_ou_creer_mot, inserer_apparait
-from moteur_series.base import connexion
+from moteur_series.donnees.base import connexion
 
 def peupler_langue(conn, corpus, langue, id_series):
     document_frequencies = calculer_document_frequencies(corpus)

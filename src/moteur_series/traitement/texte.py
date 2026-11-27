@@ -66,6 +66,15 @@ def supprimer_accents(texte):
             resultat = resultat + caractere
     return resultat
 
+
+def normaliser_titre(saisie):
+    """
+    Met un titre tape au clavier sous la forme des titres de la base :
+    colle, en minuscules, sans accents. "Grey's Anatomy" -> "greysanatomy"
+    """
+    return re.sub(r"[^a-z0-9]", "", supprimer_accents(saisie.lower()))
+
+
 def nettoyer_texte(texte):
     """
     Transforme un texte brut en une liste de mots utiles

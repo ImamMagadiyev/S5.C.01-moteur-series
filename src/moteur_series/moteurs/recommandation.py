@@ -3,7 +3,8 @@
 # chaque serie est un vecteur {mot: poids} les vecteurs sont calcules une 
 # seule fois au demarrage a partir des frequences de la table apparait 
 
-import math 
+import difflib
+import math
 import sqlite3
 
 from moteur_series.config import BASE
@@ -144,6 +145,20 @@ def series_similaires(titre, similarites, nb_resultats=10):
         return []   # serie inconnue
     classement = sorted(similarites[titre].items(), key=lambda paire: paire[1], reverse=True)
     return classement[:nb_resultats]
+
+
+def suggerer_titres(titre, titres_connus, nb_max=5):
+    """
+    Pour un titre inconnu (deja passe par normaliser_titre), propose des titres
+    connus : d'abord ceux qui s'ecrivent presque pareil (fautes de frappe),
+    puis ceux qui contiennent ce qui a ete tape. Renvoie une liste (vide si rien)
+    """
+    propositions = difflib.get_close_matches(titre, list(titres_connus), n=3, cutoff=0.6)
+    if titre != "":
+        for titre_connu in sorted(titres_connus):
+            if titre in titre_connu and titre_connu not in propositions:
+                propositions.append(titre_connu)
+    return propositions[:nb_max]
 
 
 def charger_notes(id_utilisateur):

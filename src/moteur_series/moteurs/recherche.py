@@ -5,7 +5,7 @@
 import sqlite3
 
 from moteur_series.config import BASE
-from moteur_series.texte import nettoyer_texte
+from moteur_series.traitement.texte import nettoyer_texte
 
 def charger_index(langue="vf"):
     """

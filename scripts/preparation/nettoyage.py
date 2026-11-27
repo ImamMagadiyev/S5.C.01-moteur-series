@@ -6,8 +6,8 @@
 import os
 
 from moteur_series.config import CORPUS, CORPUS_PROPRE
-from moteur_series.sous_titres import detecter_langue, extraire_repliques, lire_fichier
-from moteur_series.texte import nettoyer_texte
+from moteur_series.traitement.sous_titres import detecter_langue, extraire_repliques, lire_fichier
+from moteur_series.traitement.texte import nettoyer_texte
 
 
 print("Corpus :", CORPUS)

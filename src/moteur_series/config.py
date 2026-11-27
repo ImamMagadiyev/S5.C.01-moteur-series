@@ -11,7 +11,7 @@ RACINE = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file_
 DOSSIER_DATA = os.path.join(RACINE, "data")
 CORPUS = os.path.join(DOSSIER_DATA, "sous-titres")          # corpus brut (.srt)
 CORPUS_PROPRE = os.path.join(DOSSIER_DATA, "corpus_propre") # un .txt par serie et par langue
-BASE = os.path.join(DOSSIER_DATA, "series.db")
+BASE = os.path.join(DOSSIER_DATA, "db", "series.db")              # index TF-IDF + comptes et notes
 
 
 # Script de creation de la base

@@ -7,7 +7,7 @@ import os
 import time
 
 from moteur_series.config import BASE
-from moteur_series.recherche import charger_index, rechercher
+from moteur_series.moteurs.recherche import charger_index, rechercher
 
 if not os.path.exists(BASE):
     print("ERREUR : base introuvable :", BASE)

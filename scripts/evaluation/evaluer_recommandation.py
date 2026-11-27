@@ -5,7 +5,7 @@ import os
 import time
 
 from moteur_series.config import BASE
-from moteur_series.recommandation import calculer_similarites, charger_vecteurs, series_similaires
+from moteur_series.moteurs.recommandation import calculer_similarites, charger_vecteurs, series_similaires
 
 # series attendue dans ses recommandations
 PAIRES_TEST = [
