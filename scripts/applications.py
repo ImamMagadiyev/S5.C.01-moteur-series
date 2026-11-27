@@ -5,6 +5,7 @@
 import difflib
 import os
 import re
+import sys
 import time
 
 from getpass import getpass
@@ -12,8 +13,20 @@ from moteur_series.base import connexion
 from moteur_series.comptes import creer_compte, se_connecter
 from moteur_series.config import BASE
 from moteur_series.recherche import charger_index, rechercher
-from moteur_series.recommandation import calculer_similarites, charger_vecteurs, series_similaires
+from moteur_series.recommandation import (
+    calculer_similarites,
+    charger_notes,
+    charger_vecteurs,
+    noter_serie,
+    recommander_selon_notes,
+    series_similaires,
+)
 from moteur_series.texte import supprimer_accents
+
+# msvcrt (Windows seulement) lit le clavier touche par touche : c'est ce qui
+# permet de reconnaitre la touche Echap, que input() ne voit pas
+if os.name == "nt":
+    import msvcrt
 
 LARGEUR = 52
 
@@ -45,6 +58,54 @@ def effacer_ecran():
     else:
         os.system("clear")
 
+
+def saisir(invite, masque=False):
+    """
+    Remplace input() : lit une ligne au clavier, mais la touche Echap annule.
+    Renvoie le texte tape (sans espaces autour), ou None si Echap.
+    masque=True : les caracteres s'affichent en * (mot de passe, non nettoye)
+    """
+    # Hors Windows, ou si la saisie vient d'un fichier (tests) : lecture
+    # normale d'une ligne, sans la touche Echap
+    if os.name != "nt" or not sys.stdin.isatty():
+        if masque and sys.stdin.isatty():
+            return getpass(invite)
+        texte = input(invite)
+        if masque:
+            return texte
+        return texte.strip()
+
+    print(invite, end="", flush=True)
+    texte = ""
+    while True:
+        touche = msvcrt.getwch()            # attend une touche, sans Entree
+        if touche == "\r":                  # Entree : la saisie est finie
+            print()
+            if masque:
+                return texte
+            return texte.strip()
+        if touche == "\x1b":                # Echap : on annule
+            print()
+            return None
+        if touche == "\x03":                # Ctrl+C : quitter, comme avec input()
+            raise KeyboardInterrupt
+        if touche == "\x08":                # Retour arriere : on efface le dernier caractere
+            if len(texte) > 0:
+                texte = texte[:-1]
+                print("\b \b", end="", flush=True)
+            continue
+        if touche in ("\x00", "\xe0"):      # fleches, F1... : envoient 2 codes, on les ignore
+            msvcrt.getwch()
+            continue
+        if touche < " ":                    # autres touches de controle (Tab...) : ignorees
+            continue
+        texte = texte + touche
+        if masque:
+            print("*", end="", flush=True)
+        else:
+            print(touche, end="", flush=True)
+
+
 def afficher_entete(titre, utilisateur):
     """
     Efface l'ecran puis affiche : le cadre du haut, le titre de la page,
@@ -70,6 +131,8 @@ def afficher_entete(titre, utilisateur):
     espace = LARGEUR - len(titre) - len(statut)
     print(" " + couleur(titre, GRAS + JAUNE) + " " * espace + couleur(statut, code_statut))
     print(" " + couleur("-" * LARGEUR, GRIS))
+    if titre != "ACCUEIL":
+        print(couleur(" Échap : revenir en arrière", GRIS))
 
     for message in messages:
         print(" " + message)
@@ -79,7 +142,7 @@ def afficher_entete(titre, utilisateur):
 def choisir(options):
     """
     Affiche le menu et redemande tant que le choix n'est pas valide.
-    Renvoie la touche choisie.
+    Renvoie la touche choisie, ou None si Echap.
     """
     touches = []
     for touche, libelle in options:
@@ -87,8 +150,8 @@ def choisir(options):
         touches.append(touche)
     print()
     while True:
-        choix = input(couleur(" > ", JAUNE)).strip()
-        if choix in touches:
+        choix = saisir(couleur(" > ", JAUNE))
+        if choix is None or choix in touches:
             return choix
         print(" " + couleur("Choix invalide, tapez " + ", ".join(touches) + ".", ROUGE))
 
@@ -107,7 +170,9 @@ def ecran_accueil():
         return "inscription"
     if choix == "3":
         return "menu"
-    return "quitter"
+    if choix == "0":
+        return "quitter"
+    return "accueil"   # Echap sur l'accueil : rien avant, on reste
 
 def ecran_connexion(conn):
     """
@@ -116,10 +181,12 @@ def ecran_connexion(conn):
     afficher_entete("CONNEXION", None)
     print(couleur(" Laissez le pseudo vide pour revenir à l'accueil.", GRIS))
     print()
-    pseudo = input(" Pseudo       : ").strip()
-    if pseudo == "":
+    pseudo = saisir(" Pseudo       : ")
+    if pseudo is None or pseudo == "":
         return ("accueil", None)
-    mdp = getpass(" Mot de passe : ")
+    mdp = saisir(" Mot de passe : ", masque=True)
+    if mdp is None:
+        return ("accueil", None)
 
     resultat, id_utilisateur = se_connecter(conn, pseudo, mdp)
     if resultat == "ok":
@@ -148,12 +215,18 @@ def ecran_creer_compte(conn):
     afficher_entete("CRÉER UN COMPTE", None)
     print(couleur(" Laissez le pseudo vide pour revenir à l'accueil.", GRIS))
     print()
-    pseudo = input(" Pseudo       : ").strip()
-    if pseudo == "":
+    pseudo = saisir(" Pseudo       : ")
+    if pseudo is None or pseudo == "":
         return "accueil"
-    email = input(" Email        : ").strip()
-    mdp = getpass(" Mot de passe : ")
-    confirmation = getpass(" Confirmation : ")
+    email = saisir(" Email        : ")
+    if email is None:
+        return "accueil"
+    mdp = saisir(" Mot de passe : ", masque=True)
+    if mdp is None:
+        return "accueil"
+    confirmation = saisir(" Confirmation : ", masque=True)
+    if confirmation is None:
+        return "accueil"
 
     if email == "" or mdp == "":
         annoncer("Tous les champs sont obligatoires.", ROUGE)
@@ -173,19 +246,29 @@ def ecran_creer_compte(conn):
 def ecran_menu(utilisateur):
     """Menu principal, avec ou sans compte."""
     afficher_entete("MENU", utilisateur)
-    if utilisateur is None:
-        sortie = "Retour à l'accueil"
-    else:
-        sortie = "Se déconnecter"
-    choix = choisir([
+    options = [
         ("1", "Rechercher une série par mots-clés"),
         ("2", "Séries similaires à une série"),
-        ("0", sortie),
-    ])
+    ]
+    if utilisateur is None:
+        print(couleur(" Connectez-vous pour noter des séries et recevoir des recommandations.", GRIS))
+        print()
+        options.append(("0", "Retour à l'accueil"))
+    else:
+        options.append(("3", "Noter une série"))
+        options.append(("4", "Mes recommandations"))
+        options.append(("0", "Se déconnecter"))
+
+    choix = choisir(options)
     if choix == "1":
         return "recherche"
     if choix == "2":
         return "similaires"
+    if choix == "3":
+        return "noter"
+    if choix == "4":
+        return "recommandations"
+    # "0" ou Echap : retour a l'accueil (ce qui deconnecte)
     if utilisateur is not None:
         annoncer("Vous êtes déconnecté.", GRIS)
     return "accueil"
@@ -219,11 +302,11 @@ def afficher_resultats(resultats):
 def demander_titre(similarites, invite):
     """
     Demande le nom d'une serie jusqu'a ce qu'il corresponde a une serie connue
-    Renvoie le titre tel qu'il est dans la base, ou None si la ligne est vide
+    Renvoie le titre tel qu'il est dans la base, ou None si Echap ou ligne vide
     """
     while True:
-        saisie = input(couleur(invite, JAUNE)).strip()
-        if saisie == "":
+        saisie = saisir(couleur(invite, JAUNE))
+        if saisie is None or saisie == "":
             return None
         # Les titres de la base sont colles, en minuscules, sans accents :
         # "Grey's Anatomy" -> "greysanatomy"
@@ -243,13 +326,40 @@ def demander_titre(similarites, invite):
             print(" " + couleur("Série inconnue.", ROUGE))
 
 
-def ecran_recherche(index, utilisateur):
+def proposer_de_noter(conn, utilisateur, resultats):
+    """
+    Apres une liste de resultats [(titre, score), ...] : propose de noter les
+    series affichees en tapant leur numero (seulement si l'utilisateur est connecte)
+    Renvoie True si au moins une note a ete enregistree
+    """
+    if utilisateur is None or len(resultats) == 0:
+        return False
+    a_note = False
+    while True:
+        saisie = saisir(couleur(" Numéro de la série à noter (Entrée pour continuer) : ", JAUNE))
+        if saisie is None or saisie == "":
+            return a_note
+        # isdigit() avant int() : "abc" ou "-1" ne font pas planter le programme
+        if not saisie.isdigit() or int(saisie) < 1 or int(saisie) > len(resultats):
+            print(" " + couleur("Tapez un numéro entre 1 et " + str(len(resultats)) + ", ou Entrée.", ROUGE))
+            continue
+        titre = resultats[int(saisie) - 1][0]   # la liste commence a 0, l'affichage a 1
+        note = demander_note()
+        if note is None:
+            print(couleur(" Note annulée.", GRIS))
+            continue
+        noter_serie(conn, utilisateur[0], titre, note)
+        print(" " + couleur("Note enregistrée : " + titre + " " + str(note) + "/5", VERT))
+        a_note = True
+
+
+def ecran_recherche(conn, index, utilisateur):
     afficher_entete("RECHERCHE", utilisateur)
     print(couleur(" Tapez des mots-clés (ligne vide pour revenir au menu).", GRIS))
     while True:
         print()
-        requete = input(couleur(" Recherche : ", JAUNE)).strip()
-        if requete == "":
+        requete = saisir(couleur(" Recherche : ", JAUNE))
+        if requete is None or requete == "":
             return "menu"
         debut = time.time()
         resultats = rechercher(requete, index)
@@ -259,9 +369,10 @@ def ecran_recherche(index, utilisateur):
         else:
             afficher_resultats(resultats)
             print(couleur(f" ({duree:.0f} ms)", GRIS))
+            proposer_de_noter(conn, utilisateur, resultats)
 
 
-def ecran_similaires(similarites, utilisateur):
+def ecran_similaires(conn, similarites, utilisateur):
     afficher_entete("SÉRIES SIMILAIRES", utilisateur)
     print(couleur(" Tapez le nom d'une série (ligne vide pour revenir au menu).", GRIS))
     while True:
@@ -270,7 +381,85 @@ def ecran_similaires(similarites, utilisateur):
         if titre is None:
             return "menu"
         print(" Les séries les plus proches de " + couleur(titre, GRAS) + " :")
-        afficher_resultats(series_similaires(titre, similarites))
+        resultats = series_similaires(titre, similarites)
+        afficher_resultats(resultats)
+        proposer_de_noter(conn, utilisateur, resultats)
+
+
+def afficher_notes(notes):
+    """
+    Affiche les notes {titre: note} avec des etoiles, de la meilleure a la moins bonne
+    """
+    if len(notes) == 0:
+        print(couleur(" Vous n'avez encore noté aucune série.", GRIS))
+        return
+    print(" Vos notes :")
+    classement = sorted(notes.items(), key=lambda paire: paire[1], reverse=True)
+    for titre, note in classement:
+        etoiles = "★" * note + "☆" * (5 - note)
+        print("   " + titre.ljust(30) + couleur(etoiles, JAUNE))
+
+
+def demander_note():
+    """
+    Redemande tant que la saisie n'est pas un entier de 1 a 5
+    Renvoie la note, ou None si Echap
+    """
+    while True:
+        saisie = saisir(couleur(" Note de 1 à 5 : ", JAUNE))
+        if saisie is None:
+            return None
+        if saisie in ["1", "2", "3", "4", "5"]:
+            return int(saisie)
+        print(" " + couleur("La note doit être un nombre entier de 1 à 5.", ROUGE))
+
+
+def ecran_noter(conn, similarites, utilisateur):
+    afficher_entete("NOTER UNE SÉRIE", utilisateur)
+    id_utilisateur = utilisateur[0]
+    afficher_notes(charger_notes(id_utilisateur))
+    print()
+    print(couleur(" Tapez le nom d'une série (ligne vide pour revenir au menu).", GRIS))
+    print(couleur(" Si elle est déjà notée, la nouvelle note remplace l'ancienne.", GRIS))
+    while True:
+        print()
+        titre = demander_titre(similarites, " Série : ")
+        if titre is None:
+            return "menu"
+        note = demander_note()
+        if note is None:
+            print(couleur(" Note annulée.", GRIS))
+            continue
+        noter_serie(conn, id_utilisateur, titre, note)
+        print(" " + couleur("Note enregistrée : " + titre + " " + str(note) + "/5", VERT))
+
+
+def ecran_mes_recommandations(conn, similarites, utilisateur):
+    afficher_entete("MES RECOMMANDATIONS", utilisateur)
+    notes = charger_notes(utilisateur[0])
+    afficher_notes(notes)
+    print()
+
+    if len(notes) == 0:
+        print(couleur(" Notez quelques séries (menu, option 3) pour recevoir des recommandations.", GRIS))
+    else:
+        resultats = recommander_selon_notes(notes, similarites)
+        if len(resultats) == 0:
+            # recommander_selon_notes ignore les notes de 3 (poids note - 3 = 0)
+            print(couleur(" Toutes vos notes valent 3 (neutre) : notez des séries que vous", GRIS))
+            print(couleur(" aimez (4 ou 5) ou que vous n'aimez pas (1 ou 2).", GRIS))
+        else:
+            print(" Séries recommandées pour vous :")
+            afficher_resultats(resultats)
+            print()
+            # Une nouvelle note change les recommandations : on reaffiche l'ecran
+            if proposer_de_noter(conn, utilisateur, resultats):
+                return "recommandations"
+            return "menu"
+
+    print()
+    saisir(couleur(" Appuyez sur Entrée ou Échap pour revenir au menu.", GRIS))
+    return "menu"
 
 
 def main():
@@ -296,9 +485,13 @@ def main():
         elif ecran == "menu":
             ecran = ecran_menu(utilisateur)
         elif ecran == "recherche":
-            ecran = ecran_recherche(index, utilisateur)
+            ecran = ecran_recherche(conn, index, utilisateur)
         elif ecran == "similaires":
-            ecran = ecran_similaires(similarites, utilisateur)
+            ecran = ecran_similaires(conn, similarites, utilisateur)
+        elif ecran == "noter":
+            ecran = ecran_noter(conn, similarites, utilisateur)
+        elif ecran == "recommandations":
+            ecran = ecran_mes_recommandations(conn, similarites, utilisateur)
 
     conn.close()
     print(couleur(" Au revoir !", CYAN))
